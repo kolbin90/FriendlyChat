@@ -17,6 +17,7 @@
 import UIKit
 import Firebase
 import FirebaseAuthUI
+import FirebaseGoogleAuthUI
 
 // MARK: - FCViewController
 
@@ -53,8 +54,8 @@ class FCViewController: UIViewController, UINavigationControllerDelegate {
     // MARK: Life Cycle
     
     override func viewDidLoad() {
-        self.signedInStatus(isSignedIn: true)
-        configureDatabase()
+        configureAuth()
+        
         
         // TODO: Handle what users see when view loads
     }
@@ -67,7 +68,26 @@ class FCViewController: UIViewController, UINavigationControllerDelegate {
     // MARK: Config
     
     func configureAuth() {
+        let provider = [FUIGoogleAuth()]
+        FUIAuth.defaultAuthUI()?.providers = provider
+        
         // TODO: configure firebase authentication
+        _authHandle = Auth.auth().addStateDidChangeListener { (auth: Auth, user: User?) in
+            self.messages.removeAll(keepingCapacity: false)
+            self.messagesTable.reloadData()
+            
+            if let activeUser = user {
+                if self.user != activeUser {
+                    self.user = activeUser
+                    self.signedInStatus(isSignedIn: true)
+                    let name = activeUser.email!.components(separatedBy: "@")[0]
+                    self.displayName = name
+                }
+            } else {
+                self.signedInStatus(isSignedIn: false)
+                self.loginSession()
+            }
+        }
     }
     
     func configureDatabase() {
@@ -87,6 +107,7 @@ class FCViewController: UIViewController, UINavigationControllerDelegate {
     deinit {
         // TODO: set up what needs to be deinitialized when view is no longer being used
         ref.child("messages").removeObserver(withHandle: _refHandle)
+        Auth.auth().removeStateDidChangeListener(_authHandle)
     }
     
     // MARK: Remote Config
@@ -116,6 +137,7 @@ class FCViewController: UIViewController, UINavigationControllerDelegate {
             messagesTable.estimatedRowHeight = 122.0
             backgroundBlur.effect = nil
             messageTextField.delegate = self
+            configureDatabase()
             
             // TODO: Set up app to send and receive messages when signed in
         }
