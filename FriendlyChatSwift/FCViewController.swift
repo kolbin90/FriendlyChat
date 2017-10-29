@@ -175,7 +175,6 @@ class FCViewController: UIViewController, UINavigationControllerDelegate {
     
     @IBAction func didSendMessage(_ sender: UIButton) {
         let _ = textFieldShouldReturn(messageTextField)
-        messageTextField.text = ""
     }
     
     @IBAction func dismissImageDisplay(_ sender: AnyObject) {
@@ -278,6 +277,7 @@ extension FCViewController: UITextFieldDelegate {
         if !textField.text!.isEmpty {
             let data = [Constants.MessageFields.text: textField.text! as String]
             sendMessage(data: data)
+            textField.text = ""
             textField.resignFirstResponder()
         }
         return true
