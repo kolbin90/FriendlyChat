@@ -102,6 +102,7 @@ class FCViewController: UIViewController, UINavigationControllerDelegate {
     
     func configureStorage() {
         // TODO: configure storage using your firebase storage
+        storageRef = Storage.storage().reference()
     }
     
     deinit {
@@ -138,6 +139,7 @@ class FCViewController: UIViewController, UINavigationControllerDelegate {
             backgroundBlur.effect = nil
             messageTextField.delegate = self
             configureDatabase()
+            configureStorage()
             
             // TODO: Set up app to send and receive messages when signed in
         }
@@ -159,8 +161,15 @@ class FCViewController: UIViewController, UINavigationControllerDelegate {
     
     func sendPhotoMessage(photoData: Data) {
         // TODO: create method that pushes message w/ photo to the firebase database
+        let imagePath = "chat_photos/" + Auth.auth().currentUser!.uid + "/\(Double(Date.timeIntervalSinceReferenceDate * 1000))"
+        
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+        storageRef.child(imagePath).putData(photoData, metadata: metadata) { (metadata, error) in
+            guard (error == nil) else {return}
+            self.sendMessage(data: [Constants.MessageFields.imageUrl: self.storageRef.child((metadata?.path)!).description])
+        }
     }
-    
     // MARK: Alert
     
     func showAlert(title: String, message: String) {
@@ -237,9 +246,29 @@ extension FCViewController: UITableViewDelegate, UITableViewDataSource {
         let messageSnapshot = messages[indexPath.row]
         let message = messageSnapshot.value as! [String:String]
         let name = message[Constants.MessageFields.name] ?? "[username]"
-        let text = message[Constants.MessageFields.text] ?? "[message]"
-        cell!.textLabel?.text = name + ": " + text
-        cell!.imageView?.image = self.placeholderImage
+        //let text = message[Constants.MessageFields.text] ?? "[message]"
+        
+        if let imageUrl = message[Constants.MessageFields.imageUrl] {
+            cell!.textLabel?.text = "sent by \(name)"
+            Storage.storage().reference(forURL: imageUrl).getData(maxSize: INT64_MAX, completion: { (data, error) in
+                guard (error == nil) else {return}
+                
+                let messageImage = UIImage.init(data: data!, scale: 50)
+                
+                if cell == tableView.cellForRow(at: indexPath) {
+                    DispatchQueue.main.async {
+                        cell.imageView?.image = messageImage
+                        cell.setNeedsLayout()
+                    }
+                }
+            })
+        } else {
+            let text = message[Constants.MessageFields.text] ?? "[message]"
+            cell!.textLabel?.text = name + ": " + text
+            cell!.imageView?.image = self.placeholderImage
+        }
+        
+        
         return cell!
 
     }
