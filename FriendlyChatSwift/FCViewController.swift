@@ -18,6 +18,7 @@ import UIKit
 import Firebase
 import FirebaseAuthUI
 import FirebaseGoogleAuthUI
+import FirebaseRemoteConfig
 
 // MARK: - FCViewController
 
@@ -115,10 +116,34 @@ class FCViewController: UIViewController, UINavigationControllerDelegate {
     
     func configureRemoteConfig() {
         // TODO: configure remote configuration settings
+        let remoteConfigSettings = RemoteConfigSettings(developerModeEnabled: true)
+        remoteConfig = RemoteConfig.remoteConfig()
+        remoteConfig.configSettings = remoteConfigSettings!
+        
     }
     
     func fetchConfig() {
         // TODO: update to the current coniguratation
+        var experationDuration:Double = 3600
+        
+        if remoteConfig.configSettings.isDeveloperModeEnabled {
+            experationDuration = 0
+        }
+        // fetch config
+     //   remoteConfig.fetch(withExpirationDuration: experationDuration, completionHandler: <#T##RemoteConfigFetchCompletion?##RemoteConfigFetchCompletion?##(RemoteConfigFetchStatus, Error?) -> Void#>)
+        remoteConfig.fetch(withExpirationDuration: experationDuration) { (status, error) in
+            if status == .success {
+                print("config fetched")
+                self.remoteConfig.activateFetched()
+                let friendlyMsgLenght = self.remoteConfig["friendly_msg_length"]
+                if friendlyMsgLenght.source != .static {
+                    self.msglength = friendlyMsgLenght.numberValue!
+                    print("Msg lenght = \(self.msglength)")
+                }
+            } else {
+                print(error)
+            }
+        }
     }
     
     // MARK: Sign In and Out
@@ -140,6 +165,8 @@ class FCViewController: UIViewController, UINavigationControllerDelegate {
             messageTextField.delegate = self
             configureDatabase()
             configureStorage()
+            configureRemoteConfig()
+            fetchConfig()
             
             // TODO: Set up app to send and receive messages when signed in
         }
